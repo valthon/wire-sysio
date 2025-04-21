@@ -367,7 +367,9 @@ namespace sysio { namespace chain {
          auto& am = control.get_mutable_authorization_manager();
          for (const auto& act : trx.actions) {
             for (const auto& auth : act.authorization) {
-               am.update_permission_usage(am.get_permission(auth));
+               if (auth.permission != config::sysio_payer_name) {
+                  am.update_permission_usage(am.get_permission(auth));
+               }
             }
          }
       }
@@ -850,6 +852,7 @@ namespace sysio { namespace chain {
       flat_set<account_name> actors;
 
       bool one_auth = false;
+      auto payer = ""_n;
       for( const auto& a : trx.actions ) {
          auto* code = db.find<account_object, by_name>(a.account);
          SYS_ASSERT( code != nullptr, transaction_exception,
@@ -858,19 +861,44 @@ namespace sysio { namespace chain {
             SYS_ASSERT( a.authorization.size() == 0, transaction_exception,
                        "read-only action '${name}' cannot have authorizations", ("name", a.name) );
          }
-         for( const auto& auth : a.authorization ) {
-            one_auth = true;
-            auto* actor = db.find<account_object, by_name>(auth.actor);
-            SYS_ASSERT( actor  != nullptr, transaction_exception,
-                        "action's authorizing actor '${account}' does not exist", ("account", auth.actor) );
-            SYS_ASSERT( auth_manager.find_permission(auth) != nullptr, transaction_exception,
-                        "action's authorizations include a non-existent permission: ${permission}",
-                        ("permission", auth) );
-            if( enforce_actor_whitelist_blacklist )
-               actors.insert( auth.actor );
+         payer = ""_n;
+         for (const auto &auth: a.authorization) {
+            if (auth.permission == config::sysio_payer_name) {
+               SYS_ASSERT(payer == ""_n, transaction_exception,
+                          "action cannot have multiple payers");
+
+               auto *actor = db.find<account_object, by_name>(auth.actor);
+               SYS_ASSERT(actor != nullptr, transaction_exception,
+                          "action's paying actor '${account}' does not exist", ("account", auth.actor));
+               payer = auth.actor;
+            } else {
+               one_auth = true;
+               auto *actor = db.find<account_object, by_name>(auth.actor);
+               SYS_ASSERT(actor != nullptr, transaction_exception,
+                          "action's authorizing actor '${account}' does not exist", ("account", auth.actor));
+               SYS_ASSERT(auth_manager.find_permission(auth) != nullptr, transaction_exception,
+                          "action's authorizations include a non-existent permission: ${permission}",
+                          ("permission", auth));
+               if (enforce_actor_whitelist_blacklist)
+                  actors.insert(auth.actor);
+            }
+         }
+         if (payer != ""_n) {
+            bool authPayer = false;
+            for (const auto &auth: a.authorization) {
+               if (auth.permission == config::sysio_payer_name) {
+                  continue;
+               }
+               if (auth.actor == payer) {
+                  authPayer = true;
+                  break;
+               }
+            }
+            SYS_ASSERT(authPayer, transaction_exception,
+                       "Payer '${account}' did not authorize this action", ("account", payer));
          }
       }
-      SYS_ASSERT( one_auth || is_read_only(), tx_no_auths, "transaction must have at least one authorization" );
+      SYS_ASSERT(one_auth || is_read_only(), tx_no_auths, "transaction must have at least one authorization" );
 
       if( enforce_actor_whitelist_blacklist ) {
          control.check_actor_list( actors );
