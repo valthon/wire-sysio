@@ -525,7 +525,7 @@ namespace sysio { namespace chain {
             checktime();
 
             // Special case for explicit payer
-            if ( declared_auth.permission != config::sysio_payer_name ) {
+            if ( declared_auth.permission == config::sysio_payer_name ) {
                SYS_ASSERT(payer == ""_n, irrelevant_auth_exception, "Multiple payers specified for action");
                payer = declared_auth.actor;
                continue;

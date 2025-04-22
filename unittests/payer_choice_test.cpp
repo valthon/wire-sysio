@@ -53,7 +53,9 @@ BOOST_AUTO_TEST_SUITE(payer_choice_test)
        wlog("Attempt with node owner as caller should fail without sysio.payer permission");
        // TODO: this should fail because contract does not have resources
        // Even though the caller has the resources, they have not passed the sysio.payer permission.
-       c.push_action(tester1_account, "setdata"_n, {permission_level(alice_account, "active"_n)}, mutable_variant_object()
+       c.push_action(tester1_account, "setdata"_n, {
+               permission_level(alice_account, "active"_n)
+           },mutable_variant_object()
            ("len1", 10)
            ("len2", 0)
            ("payer", alice_account)

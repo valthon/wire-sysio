@@ -752,6 +752,9 @@ wlog("About to push TX");
       trx.actions.emplace_back( get_action( code, acttype, auths, data ) );
       set_transaction_headers( trx, expiration, delay_sec );
       for (const auto& auth : auths) {
+         if (auth.permission == config::sysio_payer_name) {
+            continue;
+         }
          trx.sign( get_private_key( auth.actor, auth.permission.to_string() ), control->get_chain_id() );
       }
 
