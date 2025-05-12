@@ -2461,7 +2461,7 @@ BOOST_AUTO_TEST_CASE( disable_deferred_trxs_stage_1_no_op_test ) { try {
    transaction_id_type alice_trx_id;
    transaction_id_type payloadless_trx_id;
    for( auto itr = idx.begin(); itr != idx.end(); ++itr ) {
-      if( itr->payer == "alice"_n) {
+      if( itr->sender == "alice"_n) {
          alice_trx_id = itr->trx_id;
       } else {
          payloadless_trx_id = itr->trx_id;
