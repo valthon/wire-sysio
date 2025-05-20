@@ -441,6 +441,10 @@ namespace sysio { namespace chain {
       auto [contract_net, contract_net_grey] = rl.get_account_net_limit_ex(contract_account, greylist_limit);
 
       int64_t total_ram_used = total_ram_usage;
+      wlog("Calculating payer for transaction with total RAM usage ${ram_usage}",
+           ("ram_usage", total_ram_used));
+      SYS_ASSERT(total_ram_used == 0, resource_exhausted_exception,
+                  "Transaction has mystery bonus RAM usage ");
 
       // Get contract RAM limits
       int64_t c_ram_limit, c_net_w, c_cpu_w;
@@ -653,10 +657,10 @@ namespace sysio { namespace chain {
    }
 
    void transaction_context::add_ram_usage( account_name account, int64_t ram_delta ) {
-      // ---------------------- NEW ADDITION FOR SYSIO.ROA BILLING ----------------------
-      total_ram_usage += ram_delta;
-
-      // If ram_delta > 0, we may still track the account in validate_ram_usage if needed.
+      wlog("Calling add_ram_usage with account: ${account}, ram_delta: ${ram_delta}",
+           ("account", account)("ram_delta", ram_delta));
+      auto& rl = control.get_mutable_resource_limits_manager();
+      rl.add_pending_ram_usage( account, ram_delta );
       if( ram_delta > 0 ) {
          validate_ram_usage.insert( account );
       }

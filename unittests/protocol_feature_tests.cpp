@@ -1085,12 +1085,13 @@ BOOST_AUTO_TEST_CASE(steal_my_ram) {
 
       c.create_accounts({tester1_account, alice_account, bob_account, carl_account});
       c.produce_block();
-      c.set_code(tester1_account, test_contracts::ram_restrictions_test_wasm());
-      c.set_abi(tester1_account, test_contracts::ram_restrictions_test_abi());
-      c.produce_block();
-
+      c.register_node_owner(tester1_account, 1);
       c.register_node_owner(alice_account, 1);
       c.register_node_owner(carl_account, 1);
+      c.produce_block();
+
+      c.set_code(tester1_account, test_contracts::ram_restrictions_test_wasm());
+      c.set_abi(tester1_account, test_contracts::ram_restrictions_test_abi());
       c.produce_block();
 
       wlog("Adding data using alice");

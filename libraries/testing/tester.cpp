@@ -638,6 +638,27 @@ namespace sysio { namespace testing {
       return push_transaction(trx);
    }
 
+   transaction_trace_ptr base_tester::reduce_roa_policy(account_name issuer, account_name owner, string net_weight,
+                                                     string cpu_weight, string ram_weight, int64_t network_gen) {
+      signed_transaction trx;
+      set_transaction_headers(trx);
+
+      trx.actions.emplace_back(get_action("sysio.roa"_n, "reducepolicy"_n,
+                                          vector<permission_level>{{issuer, config::active_name}},
+                                          fc::mutable_variant_object
+                                          ("owner", owner)
+                                          ("issuer", issuer)
+                                          ("net_weight", net_weight)
+                                          ("cpu_weight", cpu_weight)
+                                          ("ram_weight", ram_weight)
+                                          ("network_gen", network_gen)
+      ));
+
+      set_transaction_headers(trx);
+      trx.sign(get_private_key(issuer, "active"), control->get_chain_id());
+      return push_transaction(trx);
+   }
+
    transaction_trace_ptr base_tester::push_transaction( packed_transaction& trx,
                                                         fc::time_point deadline,
                                                         uint32_t billed_cpu_time_us

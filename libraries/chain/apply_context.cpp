@@ -89,6 +89,7 @@ void apply_context::exec_one()
                   control.check_contract_list( receiver );
                   control.check_action_list( act->account, act->name );
                }
+               wlog("Doing native crap for ${receiver}::${account}::${action}", ("receiver", receiver)("account", act->account)("action", act->name));
                (*native)( *this );
             }
 
@@ -521,6 +522,10 @@ vector<account_name> apply_context::get_active_producers() const {
 }
 
 void apply_context::update_db_usage( const account_name& payer, int64_t delta ) {
+   fc::logger::get("default").set_log_level(fc::log_level::debug);
+   wlog("ApplyContext update_db_usage for payer ${payer} of ${delta} bytes,"
+        " privileged ${privileged}, receiver ${receiver}, action ${action} of account ${act_account}",
+        ("payer", payer)("delta", delta)("privileged", privileged)("receiver", receiver)("action", act->name)("act_account", act->account));
    if( delta > 0 ) {
       if( !(privileged || payer == account_name(receiver)
                || control.is_builtin_activated( builtin_protocol_feature_t::ram_restrictions ) ) )
@@ -861,7 +866,25 @@ uint64_t apply_context::next_auth_sequence( account_name actor ) {
    return amo.auth_sequence;
 }
 
-void apply_context::add_ram_usage( account_name account, int64_t ram_delta ) {
+void apply_context::add_ram_usage( account_name sender_account, int64_t ram_delta ) {
+
+   // search act->authorization for a payer permission role
+   auto payer_found = false;
+   for( const auto& auth : act->authorization ) {
+      if( auth.actor == sender_account && auth.permission == config::sysio_payer_name ) {
+         payer_found = true;
+         break;
+      }
+   }
+   account_name account;
+   if (payer_found) {
+      wlog("Payer authorized payment!");
+      account = sender_account;
+   } else {
+      wlog("No payer auth, so assume contract pays");
+      account = receiver;
+   }
+
    trx_context.add_ram_usage( account, ram_delta );
 
    auto p = _account_ram_deltas.emplace( account, ram_delta );

@@ -24,8 +24,13 @@ BOOST_AUTO_TEST_SUITE(payer_choice_test)
         const auto &tester1_account = account_name("tester1");
         const auto &alice_account = account_name("alice");
         const auto &bob_account = account_name("bob");
+        const auto &daddy_account = account_name("daddy");
 
-        c.create_accounts({tester1_account, alice_account, bob_account});
+        c.create_accounts({tester1_account, alice_account, bob_account, daddy_account});
+        c.register_node_owner(daddy_account, 1);
+        c.add_roa_policy(daddy_account, tester1_account,
+            "100.0000 SYS", "100.0000 SYS", "0.0001 SYS",
+            0, 0);
         c.produce_block();
         c.set_code(tester1_account, test_contracts::ram_restrictions_test_wasm());
         c.set_abi(tester1_account, test_contracts::ram_restrictions_test_abi());
@@ -43,7 +48,7 @@ BOOST_AUTO_TEST_SUITE(payer_choice_test)
                 ("payer", alice_account)
             ),
             resource_exhausted_exception,
-            fc_exception_message_contains("can pay")
+            fc_exception_message_contains("tester1 has insufficient ram")
         );
 
         c.register_node_owner(alice_account, 2);
@@ -61,7 +66,7 @@ BOOST_AUTO_TEST_SUITE(payer_choice_test)
                 ("payer", alice_account)
             ),
             resource_exhausted_exception,
-            fc_exception_message_contains("can pay")
+            fc_exception_message_contains("tester1 has insufficient ram")
         );
         c.produce_block();
 
