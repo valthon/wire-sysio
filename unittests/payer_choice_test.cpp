@@ -24,17 +24,11 @@ BOOST_AUTO_TEST_SUITE(payer_choice_test)
         const auto &tester1_account = account_name("tester1");
         const auto &alice_account = account_name("alice");
         const auto &bob_account = account_name("bob");
-        const auto &daddy_account = account_name("daddy");
 
-        c.create_accounts({tester1_account, alice_account, bob_account, daddy_account});
-        c.register_node_owner(daddy_account, 1);
-        c.add_roa_policy(daddy_account, tester1_account,
-            "100.0000 SYS", "100.0000 SYS", "0.0001 SYS",
-            0, 0);
+        c.create_accounts({tester1_account, alice_account, bob_account});
         c.produce_block();
-        c.set_code(tester1_account, test_contracts::ram_restrictions_test_wasm());
-        c.set_abi(tester1_account, test_contracts::ram_restrictions_test_abi());
 
+        c.set_contract(tester1_account, test_contracts::ram_restrictions_test_wasm(), test_contracts::ram_restrictions_test_abi());
         c.produce_block();
 
         fc::logger::get("default").set_log_level(fc::log_level::debug);

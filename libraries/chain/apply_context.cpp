@@ -866,28 +866,22 @@ uint64_t apply_context::next_auth_sequence( account_name actor ) {
    return amo.auth_sequence;
 }
 
-void apply_context::add_ram_usage( account_name sender_account, int64_t ram_delta ) {
+void apply_context::add_ram_usage( account_name payer, int64_t ram_delta ) {
 
    // search act->authorization for a payer permission role
-   auto payer_found = false;
-   for( const auto& auth : act->authorization ) {
-      if( auth.actor == sender_account && auth.permission == config::sysio_payer_name ) {
-         payer_found = true;
-         break;
+   if (payer != receiver) {
+      auto payer_found = false;
+      for( const auto& auth : act->authorization ) {
+         if( auth.actor == payer && auth.permission == config::sysio_payer_name ) {
+            payer_found = true;
+            break;
+         }
+         SYS_ASSERT(payer_found, unsatisfied_authorization, "Requested payer ${payer} did not authorize payment", ("payer", payer));
       }
    }
-   account_name account;
-   if (payer_found) {
-      wlog("Payer authorized payment!");
-      account = sender_account;
-   } else {
-      wlog("No payer auth, so assume contract pays");
-      account = receiver;
-   }
+   trx_context.add_ram_usage( payer, ram_delta );
 
-   trx_context.add_ram_usage( account, ram_delta );
-
-   auto p = _account_ram_deltas.emplace( account, ram_delta );
+   auto p = _account_ram_deltas.emplace( payer, ram_delta );
    if( !p.second ) {
       p.first->delta += ram_delta;
    }

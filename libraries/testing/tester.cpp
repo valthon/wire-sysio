@@ -1010,6 +1010,25 @@ wlog("About to push TX");
       delete_authority(account, perm, { permission_level{ account, config::owner_name } }, { get_private_key( account, "owner" ) });
    }
 
+   void base_tester::set_contract( account_name account, const vector<uint8_t>& wasm, const std::string& abi_json ) {
+      signed_transaction trx;
+      trx.actions.emplace_back( vector<permission_level>{{account, config::active_name}},
+         setcode{
+            .account    = account,
+            .vmtype     = 0,
+            .vmversion  = 0,
+            .code       = bytes(wasm.begin(), wasm.end())
+         });
+      trx.actions.emplace_back( vector<permission_level>{{account, config::active_name}},
+         setabi{
+            .account    = account,
+            .abi        = fc::raw::pack(abi_json)
+         });
+      set_transaction_headers(trx);
+      trx.sign( get_private_key(account, "active"), control->get_chain_id());
+      push_transaction(trx);
+   }
+
 
    void base_tester::set_code( account_name account, const char* wast, const private_key_type* signer  ) try {
       set_code(account, wast_to_wasm(wast), signer);
