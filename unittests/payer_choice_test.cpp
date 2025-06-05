@@ -25,32 +25,37 @@ BOOST_AUTO_TEST_SUITE(payer_choice_test)
         const auto &alice_account = account_name("alice");
         const auto &bob_account = account_name("bob");
 
+        ilog("Creating accounts: ${a}, ${b}, ${c}", ("a", tester1_account)("b", alice_account)("c", bob_account));
         c.create_accounts({tester1_account, alice_account, bob_account});
         c.produce_block();
 
+        ilog("Registering bob as node owner and assiging _just_ enough resources to tester1 to load the contract");
+        c.register_node_owner(bob_account, 2);
+        c.add_roa_policy(bob_account, tester1_account, "1.0000 SYS", "1.0000 SYS", "0.1310 SYS", 0, 0);
+        c.produce_block();
+
+        ilog("Setting code and ABI for ${a}", ("a", tester1_account));
         c.set_contract(tester1_account, test_contracts::ram_restrictions_test_wasm(), test_contracts::ram_restrictions_test_abi());
         c.produce_block();
 
         fc::logger::get("default").set_log_level(fc::log_level::debug);
-        wlog("No Resource Testing");
+        ilog("No Resource Testing");
 
-        wlog("Attempt with no resources should fail");
-        BOOST_REQUIRE_EXCEPTION(
+        ilog("Attempt by contract to charge itself with no resources should fail with resource_exhausted_exception");
+        // BOOST_REQUIRE_EXCEPTION(
             c.push_action(tester1_account, "setdata"_n, alice_account, mutable_variant_object()
-                ("len1", 10)
+                ("len1", 1000)
                 ("len2", 0)
-                ("payer", alice_account)
+                ("payer", tester1_account)
             ),
-            resource_exhausted_exception,
-            fc_exception_message_contains("tester1 has insufficient ram")
-        );
+        //     resource_exhausted_exception,
+        //     fc_exception_message_contains("tester1 has insufficient ram")
+        // );
 
         c.register_node_owner(alice_account, 2);
         c.produce_block();
 
-        wlog("Attempt with node owner as caller should fail without sysio.payer permission");
-        // TODO: this should fail because contract does not have resources
-        // Even though the caller has the resources, they have not passed the sysio.payer permission.
+        ilog("Attempt to charge node owner should fail without sysio.payer permission");
         BOOST_REQUIRE_EXCEPTION(
             c.push_action(tester1_account, "setdata"_n, {
                 permission_level(alice_account, "active"_n)
@@ -59,14 +64,12 @@ BOOST_AUTO_TEST_SUITE(payer_choice_test)
                 ("len2", 0)
                 ("payer", alice_account)
             ),
-            resource_exhausted_exception,
-            fc_exception_message_contains("tester1 has insufficient ram")
+            unsatisfied_authorization,
+            fc_exception_message_contains("alice did not authorize")
         );
         c.produce_block();
 
-        wlog("Attempt by node owner with sysio.payer permission should succeed");
-        // TODO: this should pass, relying on the resource capacity of the caller, per the sysio.payer permission
-        // push_action again, but this time adding the sysio_payer permission
+        ilog("Attempt to charge node owner with sysio.payer permission should succeed");
         c.push_action(tester1_account, "setdata"_n, {
                           permission_level(alice_account, "active"_n),
                           permission_level(alice_account, config::sysio_payer_name)

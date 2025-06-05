@@ -698,7 +698,7 @@ namespace sysio { namespace testing {
             fc::microseconds( deadline - fc::time_point::now() );
       auto ptrx = std::make_shared<packed_transaction>( trx, c );
       auto fut = transaction_metadata::start_recover_keys( ptrx, control->get_thread_pool(), control->get_chain_id(), time_limit, trx_type );
-wlog("About to push TX");
+      ilog("About to push TX");
       auto r = control->push_transaction( fut.get(), deadline, fc::microseconds::maximum(), billed_cpu_time_us, billed_cpu_time_us > 0, 0 );
       if (no_throw) return r;
       if( r->except_ptr ) std::rethrow_exception( r->except_ptr );
@@ -1011,6 +1011,8 @@ wlog("About to push TX");
    }
 
    void base_tester::set_contract( account_name account, const vector<uint8_t>& wasm, const std::string& abi_json ) {
+      auto abi = fc::json::from_string(abi_json).template as<abi_def>();
+
       signed_transaction trx;
       trx.actions.emplace_back( vector<permission_level>{{account, config::active_name}},
          setcode{
@@ -1019,10 +1021,10 @@ wlog("About to push TX");
             .vmversion  = 0,
             .code       = bytes(wasm.begin(), wasm.end())
          });
-      trx.actions.emplace_back( vector<permission_level>{{account, config::active_name}},
+      trx.actions.emplace_back( vector<permission_level>{{account,config::active_name}},
          setabi{
             .account    = account,
-            .abi        = fc::raw::pack(abi_json)
+            .abi        = fc::raw::pack(abi)
          });
       set_transaction_headers(trx);
       trx.sign( get_private_key(account, "active"), control->get_chain_id());

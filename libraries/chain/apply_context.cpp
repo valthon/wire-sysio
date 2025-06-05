@@ -869,15 +869,18 @@ uint64_t apply_context::next_auth_sequence( account_name actor ) {
 void apply_context::add_ram_usage( account_name payer, int64_t ram_delta ) {
 
    // search act->authorization for a payer permission role
-   if (payer != receiver) {
+   if (payer != receiver && receiver != config::system_account_name && ram_delta > 0) {
+      wlog("Payer is not reciever or system account and ram_delta is positive, checking authorization for payer ${payer}", ("payer", payer));
       auto payer_found = false;
       for( const auto& auth : act->authorization ) {
+         wlog("Authorization actor: ${actor}, permission: ${permission}", ("actor", auth.actor)("permission", auth.permission));
          if( auth.actor == payer && auth.permission == config::sysio_payer_name ) {
             payer_found = true;
+            wlog("We are authorized!");
             break;
          }
-         SYS_ASSERT(payer_found, unsatisfied_authorization, "Requested payer ${payer} did not authorize payment", ("payer", payer));
       }
+      SYS_ASSERT(payer_found, unsatisfied_authorization, "Requested payer ${payer} did not authorize payment", ("payer", payer));
    }
    trx_context.add_ram_usage( payer, ram_delta );
 
