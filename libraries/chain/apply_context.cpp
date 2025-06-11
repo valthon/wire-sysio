@@ -89,7 +89,6 @@ void apply_context::exec_one()
                   control.check_contract_list( receiver );
                   control.check_action_list( act->account, act->name );
                }
-               wlog("Doing native crap for ${receiver}::${account}::${action}", ("receiver", receiver)("account", act->account)("action", act->name));
                (*native)( *this );
             }
 
@@ -866,21 +865,42 @@ uint64_t apply_context::next_auth_sequence( account_name actor ) {
    return amo.auth_sequence;
 }
 
-void apply_context::add_ram_usage( account_name payer, int64_t ram_delta ) {
+bool is_system_account(const account_name& name) {
+   return (name == config::system_account_name) ||
+          (name.to_string().size() > 5 && name.to_string().find("sysio.") == 0);
+}
 
-   // search act->authorization for a payer permission role
-   if (payer != receiver && receiver != config::system_account_name && ram_delta > 0) {
-      wlog("Payer is not reciever or system account and ram_delta is positive, checking authorization for payer ${payer}", ("payer", payer));
-      auto payer_found = false;
-      for( const auto& auth : act->authorization ) {
-         wlog("Authorization actor: ${actor}, permission: ${permission}", ("actor", auth.actor)("permission", auth.permission));
-         if( auth.actor == payer && auth.permission == config::sysio_payer_name ) {
-            payer_found = true;
-            wlog("We are authorized!");
-            break;
+void apply_context::add_ram_usage( account_name payer, int64_t ram_delta ) {
+   ilog("System account status: Payer ${payer} ${payer_sys}, receiver ${receiver} ${receiver_sys}", ("payer", payer)("payer_sys", is_system_account(payer))("receiver", receiver)("receiver_sys", is_system_account(receiver)));
+
+   if (payer != receiver && ram_delta > 0) {
+      ilog("Payer is not receiver (${receiver}) or system account and ram_delta is positive, checking authorization for payer ${payer}", ("receiver", receiver)("payer", payer));
+      if (receiver == config::system_account_name) {
+         wlog("Receiver is system account, no need to check authorization for payer ${payer}", ("payer", payer));
+      } else if (payer == config::system_account_name && is_privileged()) {
+         wlog("Payer is system account and receiver is privileged, no need to check authorization for payer ${payer}", ("payer", payer));
+      } else {
+         wlog("We need authorization to charge RAM to payer ${payer}", ("payer", payer));
+         auto payer_found = false;
+         // search act->authorization for a payer permission role
+         for( const auto& auth : act->authorization ) {
+            wlog("Authorization actor: ${actor}, permission: ${permission}, actor is system: ${sys}", ("actor", auth.actor)("permission", auth.permission)("sys", is_system_account(auth.actor)));
+            if( auth.actor == payer && auth.permission == config::sysio_payer_name ) {
+               payer_found = true;
+               wlog("We are authorized!");
+               break;
+            }
+            if ( auth.actor == config::system_account_name ) {
+               // If the payer is the system account, we don't enforce explicit payer authorization.
+               // This avoids a lot of changes for tests and sysio should not be calling untrusted contracts
+               // or spending user's RAM unexpectedly.
+               payer_found = true;
+               wlog("System account authorized, no need to provide explicit payer authorization");
+               break;
+            }
          }
+         SYS_ASSERT(payer_found, unsatisfied_authorization, "Requested payer ${payer} did not authorize payment", ("payer", payer));
       }
-      SYS_ASSERT(payer_found, unsatisfied_authorization, "Requested payer ${payer} did not authorize payment", ("payer", payer));
    }
    trx_context.add_ram_usage( payer, ram_delta );
 
