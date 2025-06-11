@@ -638,6 +638,27 @@ namespace sysio { namespace testing {
       return push_transaction(trx);
    }
 
+   transaction_trace_ptr base_tester::expand_roa_policy(account_name issuer, account_name owner, string net_weight,
+                                                     string cpu_weight, string ram_weight, int64_t network_gen) {
+      signed_transaction trx;
+      set_transaction_headers(trx);
+
+      trx.actions.emplace_back(get_action("sysio.roa"_n, "expandpolicy"_n,
+                                          vector<permission_level>{{issuer, config::active_name}},
+                                          fc::mutable_variant_object
+                                          ("owner", owner)
+                                          ("issuer", issuer)
+                                          ("net_weight", net_weight)
+                                          ("cpu_weight", cpu_weight)
+                                          ("ram_weight", ram_weight)
+                                          ("network_gen", network_gen)
+      ));
+
+      set_transaction_headers(trx);
+      trx.sign(get_private_key(issuer, "active"), control->get_chain_id());
+      return push_transaction(trx);
+   }
+
    transaction_trace_ptr base_tester::reduce_roa_policy(account_name issuer, account_name owner, string net_weight,
                                                      string cpu_weight, string ram_weight, int64_t network_gen) {
       signed_transaction trx;
@@ -1214,8 +1235,7 @@ namespace sysio { namespace testing {
 
       // Create the ROA account and mark it as privileged
       create_account(roa, config::system_account_name);
-      set_code(roa, contracts::sysio_roa_wasm());
-      set_abi(roa, contracts::sysio_roa_abi().data());
+      set_contract(roa, contracts::sysio_roa_wasm(), contracts::sysio_roa_abi().data());
       push_action(config::system_account_name, "setpriv"_n,
                   config::system_account_name,
                   fc::mutable_variant_object()("account", roa)("is_priv", 1)
