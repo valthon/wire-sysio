@@ -1249,6 +1249,11 @@ namespace sysio { namespace testing {
       );
 
       produce_block();
+
+      // Setup default node daddy for easier resource allocation during testing
+      create_account(NODE_DADDY, config::system_account_name);
+      register_node_owner(NODE_DADDY, 1);
+      produce_block();
    }
 
    vector<producer_authority> base_tester::get_producer_authorities( const vector<account_name>& producer_names )const {

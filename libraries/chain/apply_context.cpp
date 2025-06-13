@@ -114,6 +114,7 @@ void apply_context::exec_one()
                bool not_in_notify_context = (receiver == act->account);
                const auto end = _account_ram_deltas.end();
                for( auto itr = _account_ram_deltas.begin(); itr != end; ++itr, ++counter ) {
+                  wlog("pending RAM delta: ${account} ${delta}", ("account", itr->account)("delta", itr->delta) );
                   if( counter == checktime_interval ) {
                      trx_context.checktime();
                      counter = 0;
