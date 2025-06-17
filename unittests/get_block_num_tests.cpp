@@ -25,13 +25,6 @@ BOOST_AUTO_TEST_CASE( get_block_num ) { try {
    c.add_roa_policy(c.NODE_DADDY, tester1_account, "1.0000 SYS", "1.0000 SYS", "1.0000 SYS", 0, 0);
    c.produce_block();
 
-   // const auto& pfm = c.control->get_protocol_feature_manager();
-   // const auto& d = pfm.get_builtin_digest( builtin_protocol_feature_t::get_block_num );
-   // BOOST_REQUIRE( d );
-   //
-   // c.preactivate_protocol_features( {*d} );
-   // c.produce_block();
-
    c.set_contract(tester1_account, test_contracts::get_block_num_test_wasm(),
                   test_contracts::get_block_num_test_abi());
    c.produce_block();
